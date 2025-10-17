@@ -15,10 +15,9 @@ from langchain_community.llms import Ollama
 os.environ["LANGCHAIN_TELEMETRY"] = "false"
 
 BOT_NAME = "JinggStack AI Bot"
-GOOGLE_API_KEY = "AIzaSyDTrw9DUhronwql13xFIVZRZPGWmJnoXZ0"
 DATA_DIR = "./data"
 PERSIST_DIR = "./chroma_db"
-os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+GOOGLE_API_KEY=os.environ["GOOGLE_API_KEY"]
 ALLOWED_EXTENSIONS = {"txt"}
 
 
