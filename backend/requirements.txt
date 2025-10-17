@@ -1,0 +1,13 @@
+flask
+werkzeug
+langchain
+langchain-community
+langchain-huggingface
+langchain-chroma
+langchain-google-genai
+chromadb
+huggingface-hub
+docx2txt
+sentence-transformers
+unstructured
+flask-cors

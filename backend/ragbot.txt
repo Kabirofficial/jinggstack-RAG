@@ -1,0 +1,62 @@
+import os
+from flask import Flask, request, jsonify
+from langchain_community.document_loaders import DirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.chains import RetrievalQA
+from langchain.prompts import PromptTemplate
+
+os.environ["LANGCHAIN_TELEMETRY"] = "false"
+
+BOT_NAME = "JinggStack Bot"
+GOOGLE_API_KEY = "AIzaSyDTrw9DUhronwql13xFIVZRZPGWmJnoXZ0"
+DATA_DIR = "./data"
+PERSIST_DIR = "./chroma_db"
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+
+def load_docs(directory):
+    loader = DirectoryLoader(directory, glob="**/*.txt")
+    return loader.load()
+
+def split_docs(documents, chunk_size=1000, chunk_overlap=20):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap
+    )
+    return text_splitter.split_documents(documents)
+
+print(f"[{BOT_NAME}] Loading documents...")
+documents = load_docs(DATA_DIR)
+docs = split_docs(documents)
+print(f"[{BOT_NAME}] Loaded {len(documents)} docs, {len(docs)} chunks")
+
+embeddings = HuggingFaceEmbeddings(model_name="intfloat/e5-large-v2")
+
+if os.path.exists(PERSIST_DIR):
+    vectordb = Chroma(persist_directory=PERSIST_DIR, embedding_function=embeddings)
+else:
+    vectordb = Chroma.from_documents(docs, embedding=embeddings, persist_directory=PERSIST_DIR)
+
+
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0)
+
+retrieval_chain = RetrievalQA.from_chain_type(
+    llm,
+    chain_type="stuff",
+    retriever=vectordb.as_retriever(),
+)
+
+app = Flask(__name__)
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    data = request.get_json()
+    query = data.get("query")
+    if not query:
+        return jsonify({"error": "Query is required"}), 400
+    answer = retrieval_chain.invoke({"query": query})
+    return jsonify({"bot": BOT_NAME, "query": query, "answer": answer["result"]})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
